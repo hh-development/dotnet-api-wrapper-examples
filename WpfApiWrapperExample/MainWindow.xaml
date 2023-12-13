@@ -1,0 +1,117 @@
+﻿<Window x:Class="WpfApiWrapperExample.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:WpfApiWrapperExample"
+        xmlns:models="clr-namespace:WpfApiWrapperExample.Models"
+        mc:Ignorable="d"
+        Title="HH DM API wrapper demo" Height="450" Width="900">
+    <Window.Resources>
+        <Style TargetType="{x:Type ComboBox}">
+            <Setter Property="Margin" Value="2"/>
+        </Style>
+        <Style TargetType="{x:Type TextBox}">
+            <Setter Property="Margin" Value="2"/>
+        </Style>
+        <Style TargetType="{x:Type Button}">
+            <Setter Property="Margin" Value="2"/>
+            <Setter Property="Padding" Value="2"/>
+        </Style>
+    </Window.Resources>
+    <DockPanel IsEnabled="{Binding UIEnabled}">
+        <TextBlock DockPanel.Dock="Bottom" Text="{Binding CurrentStatus}"/>
+        <Grid DockPanel.Dock="Left">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <Label Grid.Row="0" Grid.Column="0" Content="Account: "/>
+            <ComboBox Grid.Row="0" Grid.Column="1" Width="200" ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedAccount}" DisplayMemberPath="Name"/>
+
+            <Label Grid.Row="1" Grid.Column="0" Content="Championship: "/>
+            <ComboBox Grid.Row="1" Grid.Column="1" Width="200" ItemsSource="{Binding Championships}" SelectedItem="{Binding SelectedChampionship}" DisplayMemberPath="Name"/>
+
+            <Label Grid.Row="2" Grid.Column="0" Content="Event: "/>
+            <ComboBox Grid.Row="2" Grid.Column="1" Width="200" ItemsSource="{Binding Events}" SelectedItem="{Binding SelectedEvent}" DisplayMemberPath="Name"/>
+
+            <Label Grid.Row="3" Grid.Column="0" Content="Car: "/>
+            <ComboBox Grid.Row="3" Grid.Column="1" Width="200" ItemsSource="{Binding EventCars}" SelectedItem="{Binding SelectedEventCar}" DisplayMemberPath="Parameters[Car].Number"/>
+
+            <Label Grid.Row="4" Grid.Column="0" Content="Setup: "/>
+            <ComboBox Grid.Row="4" Grid.Column="1" Width="200" ItemsSource="{Binding Setups}" SelectedItem="{Binding SelectedSetup}" DisplayMemberPath="Name"/>
+
+            <Button Grid.Row="5" Grid.ColumnSpan="2" Content="Add new setup" Command="{Binding AddSetupCommand}"/>
+            <Button Grid.Row="6" Grid.ColumnSpan="2" Content="Delete current setup" Command="{Binding DeleteSetupCommand}"/>
+            <Button Grid.Row="7" Grid.ColumnSpan="2" Content="Add attached file to setup" Command="{Binding AddAttachedFileToSetupCommand}"/>
+
+            <Label Grid.Row="8" Grid.Column="0" Content="Attached File: "/>
+            <ComboBox Grid.Row="8" Grid.Column="1" Width="200" ItemsSource="{Binding SelectedSetupFull.AttachedFiles}" SelectedItem="{Binding SelectedSetupFull.SelectedAttachedFile}" DisplayMemberPath="Parameters[FileName]"/>
+            
+            <Button Grid.Row="9" Grid.ColumnSpan="2" Content="Download selected attached file from setup" Command="{Binding DownloadAttachedFileFromSetupCommand}"/>
+            <Button Grid.Row="10" Grid.ColumnSpan="2" Content="Delete selected attached file from setup" Command="{Binding DeleteAttachedFileFromSetupCommand}"/>
+
+        </Grid>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Label Grid.Row="0" Grid.Column="0" Content="Name: "/>
+            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding SelectedSetupFull.NameParameter.Value}" VerticalContentAlignment="Center"/>
+
+            <Button Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Content="Save Changes" Command="{Binding SaveChangesInCurrentSetupCommand}"/>
+
+            <DataGrid Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" AutoGenerateColumns="False" ItemsSource="{Binding SelectedSetupFull.SetupParameters}" Margin="2">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Name" IsReadOnly="True" Binding="{Binding Name}"/>
+                    <DataGridTextColumn Header="Type" IsReadOnly="True" Binding="{Binding Type}"/>
+                    <DataGridTemplateColumn Header="Value">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <ContentControl Content="{Binding }">
+                                    <ContentControl.Resources>
+                                        <DataTemplate DataType="{x:Type models:DoubleSetupParameterModel}">
+                                            <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" Margin="0"/>
+                                        </DataTemplate>
+                                        <DataTemplate DataType="{x:Type models:TextSetupParameterModel}">
+                                            <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" Margin="0"/>
+                                        </DataTemplate>
+                                        <DataTemplate DataType="{x:Type models:BooleanSetupParameterModel}">
+                                            <CheckBox IsChecked="{Binding Value, UpdateSourceTrigger=PropertyChanged}"/>
+                                        </DataTemplate>
+                                        <DataTemplate DataType="{x:Type models:ReadOnlySetupParameterModel}">
+                                            <TextBox Text="{Binding Value, Mode=OneWay}" IsReadOnly="True" Margin="0"/>
+                                        </DataTemplate>
+                                    </ContentControl.Resources>
+                                </ContentControl>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+
+        </Grid>        
+    </DockPanel>
+</Window>
