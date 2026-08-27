@@ -1,4 +1,5 @@
-﻿using HHDev.DataManagement.Api.Models;
+﻿using HHDev.Core.Enums;
+using HHDev.DataManagement.Api.Models;
 using HHDev.DataManagement.ApiClientWrapper;
 using HHDev.DataManagement.Client.Authentication;
 using Microsoft.Win32;
@@ -23,7 +24,7 @@ namespace WpfApiWrapperExample
     {
         private const string API_KEY = "API KEY HERE";
 
-        private ApiClient _apiClient;
+        private IApiClientV2 _apiClient;
         private ApiSetupModel _selectedSetup;
         private ApiCustomPropertyDefinitionModel _currentSetupDefinition;
 
@@ -58,7 +59,7 @@ namespace WpfApiWrapperExample
             DataContext = this;
 
             var authManager = new AuthenticationManager(eAuthenticationMode.ApiKey, API_KEY);
-            _apiClient = new ApiClient(authManager);
+            _apiClient = new ApiClientV2(authManager);
 
             Loaded += MainWindow_Loaded;
 
@@ -86,16 +87,16 @@ namespace WpfApiWrapperExample
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             SetStatus("Loading accounts");
-            var accounts = await _apiClient.GetAllAccounts(new ApiGetOptions());
+            var accounts = await _apiClient.GetAllAccountsAsync();
             ClearStatus();
 
             if (accounts.Success == false)
             {
-                MessageBox.Show("Error retrieving accounts");
+                MessageBox.Show($"Error retrieving accounts: {DescribeFailure(accounts)}");
                 return;
             }
 
-            foreach (var account in accounts.ReturnValue)
+            foreach (var account in accounts.Value)
             {
                 Accounts.Add(account);
             }
@@ -116,7 +117,7 @@ namespace WpfApiWrapperExample
             var accountName = SelectedAccount.Name;
 
             SetStatus("Loading championships");
-            var championships = await _apiClient.GetAllChampionships(accountId, new ApiGetOptions()
+            var championships = await _apiClient.GetAllChampionshipsAsync(accountId, new ApiGetOptions()
             {
                 ParametersToInclude = new List<string>()
                 {
@@ -130,11 +131,11 @@ namespace WpfApiWrapperExample
 
             if (championships.Success == false)
             {
-                MessageBox.Show($"Error retrieving championships for account {accountName}");
+                MessageBox.Show($"Error retrieving championships for account {accountName}: {DescribeFailure(championships)}");
                 return;
             }
 
-            foreach (var championship in championships.ReturnValue)
+            foreach (var championship in championships.Value)
             {
                 Championships.Add(championship);
             }
@@ -205,11 +206,11 @@ namespace WpfApiWrapperExample
 
             var tasks = new List<Task>();
 
-            Task<ApiGetResult<ApiCustomPropertyDefinitionModel>> definitionTask = null;
+            Task<ApiResult<ApiCustomPropertyDefinitionModel>> definitionTask = null;
 
             if (_currentSetupDefinition == null || _currentSetupDefinition.Id != setupDefinitonId)
             {
-                definitionTask = _apiClient.GetDefinitionById(SelectedAccount.Id, setupDefinitonId, new ApiGetOptions()
+                definitionTask = _apiClient.GetDefinitionByIdAsync(SelectedAccount.Id, setupDefinitonId, new ApiGetOptions()
                 {
                     ParametersToInclude = new List<string>()
                     {
@@ -225,7 +226,7 @@ namespace WpfApiWrapperExample
                 tasks.Add(definitionTask);
             }
 
-            var setupsTask = _apiClient.GetAllSetupsForEventCar(acconutId, eventId, carId, new ApiGetOptions()
+            var setupsTask = _apiClient.GetAllSetupsForEventCarAsync(acconutId, eventId, carId, new ApiGetOptions()
             {
                 ParametersToInclude = new List<string>()
                 {
@@ -242,7 +243,7 @@ namespace WpfApiWrapperExample
 
             if (setups.Success == false)
             {
-                MessageBox.Show($"Error retrieving setups for event {SelectedEvent.Name} - car {((ApiCarModel)SelectedEventCar.Parameters["Car"]).Number}");
+                MessageBox.Show($"Error retrieving setups for event {SelectedEvent.Name} - car {((ApiCarModel)SelectedEventCar.Parameters["Car"]).Number}: {DescribeFailure(setups)}");
                 return;
             }
 
@@ -251,14 +252,14 @@ namespace WpfApiWrapperExample
                 var definitions = definitionTask.Result;
                 if (definitions.Success == false)
                 {
-                    MessageBox.Show($"Error retrieving setup definition for event {SelectedEvent.Name} - car {((ApiCarModel)SelectedEventCar.Parameters["Car"]).Number}");
+                    MessageBox.Show($"Error retrieving setup definition for event {SelectedEvent.Name} - car {((ApiCarModel)SelectedEventCar.Parameters["Car"]).Number}: {DescribeFailure(definitions)}");
                     return;
                 }
 
-                _currentSetupDefinition = definitions.ReturnValue;
+                _currentSetupDefinition = definitions.Value;
             }
 
-            foreach (var setup in setups.ReturnValue)
+            foreach (var setup in setups.Value)
             {
                 Setups.Add(setup);
             }
@@ -279,7 +280,7 @@ namespace WpfApiWrapperExample
             }
 
             SetStatus("Loading selected setup");
-            var setup = await _apiClient.GetSetupById(SelectedAccount.Id, SelectedSetup.Id, new ApiGetOptions()
+            var setup = await _apiClient.GetSetupByIdAsync(SelectedAccount.Id, SelectedSetup.Id, new ApiGetOptions()
             {
                 ParametersToInclude = new List<string>()
                 {
@@ -291,11 +292,20 @@ namespace WpfApiWrapperExample
 
             if (setup.Success == false)
             {
-                MessageBox.Show($"Error retrieving setup {SelectedSetup.Name}");
+                MessageBox.Show($"Error retrieving setup {SelectedSetup.Name}: {DescribeFailure(setup)}");
                 return;
             }
 
-            LoadSetup(setup.ReturnValue);           
+            LoadSetup(setup.Value);           
+        }
+
+        private static string DescribeFailure(ApiResult result)
+        {
+            var statusCode = result.StatusCode.HasValue ? $" ({(int)result.StatusCode})" : string.Empty;
+
+            return string.IsNullOrWhiteSpace(result.Message)
+                ? $"{result.Status}{statusCode}"
+                : $"{result.Status}{statusCode} - {result.Message}";
         }
 
         private void LoadSetup(ApiSetupModel setup)
@@ -321,7 +331,7 @@ namespace WpfApiWrapperExample
             }
 
             SetStatus("Adding setup");
-            var addResult = await _apiClient.AddSetup(SelectedAccount.Id, SelectedEvent.Id, GetSelectedCarId(), new CreateModel()
+            var addResult = await _apiClient.AddSetupAsync(SelectedAccount.Id, SelectedEvent.Id, GetSelectedCarId(), new CreateModel()
             {
                 CopyFromLast = true,                
             });
@@ -329,16 +339,16 @@ namespace WpfApiWrapperExample
 
             if (addResult.Success == false)
             {
-                MessageBox.Show("Error creating setup");
+                MessageBox.Show($"Error creating setup: {DescribeFailure(addResult)}");
                 return;
             }
 
             await GetSetupsForCurrentEventCar(false);
 
-            _selectedSetup = Setups.First(x => x.Id == addResult.ReturnValue.Id);
+            _selectedSetup = Setups.First(x => x.Id == addResult.Value.Id);
             OnPropertyChanged(nameof(SelectedSetup));
 
-            LoadSetup(addResult.ReturnValue);
+            LoadSetup(addResult.Value);
         }
 
         private async void DeleteSetup() 
@@ -354,12 +364,12 @@ namespace WpfApiWrapperExample
             }
 
             SetStatus("Deleting setup");
-            var result = await _apiClient.DeleteSetup(SelectedAccount.Id, SelectedSetup.Id);
+            var result = await _apiClient.DeleteSetupAsync(SelectedAccount.Id, SelectedSetup.Id);
             ClearStatus();
 
-            if (result == false)
+            if (result.Success == false)
             {
-                MessageBox.Show("Setup could not be deleted");
+                MessageBox.Show($"Setup could not be deleted: {DescribeFailure(result)}");
                 return;
             }
 
@@ -384,25 +394,25 @@ namespace WpfApiWrapperExample
             var filePath = openFileDialog.FileName;
 
             SetStatus("Uploading file");
-            var uploadResult = await _apiClient.AddAttachmentToSetup(SelectedAccount.Id, SelectedSetup.Id, new ApiPrepareUploadModel()
+            var uploadResult = await _apiClient.AddAttachmentToSetupAsync(SelectedAccount.Id, SelectedSetup.Id, new ApiPrepareUploadModel()
             {
-                AutoDownload =false,
+                AutoDownloadMode = eAutoDownloadMode.No,
                 CustomPropertyAttachedFileName = null,
                 FileName = Path.GetFileName(filePath),                
             }, filePath);            
 
-            if (uploadResult.AddAttachmentStatus == eAddAttachmentStatus.FailedToAdd)
+            if (uploadResult.Value.AddAttachmentStatus == eAddAttachmentStatus.FailedToAdd)
             {
                 ClearStatus();
-                MessageBox.Show("Failed to add attachement");
+                MessageBox.Show($"Failed to add attachement: {DescribeFailure(uploadResult)}");
                 return;
             }
 
-            while (uploadResult.AddAttachmentStatus == eAddAttachmentStatus.FailedToUpload ||
-                   uploadResult.AddAttachmentStatus == eAddAttachmentStatus.FailedToUpdateServerStatus)
+            while (uploadResult.Value.AddAttachmentStatus == eAddAttachmentStatus.FailedToUpload ||
+                   uploadResult.Value.AddAttachmentStatus == eAddAttachmentStatus.FailedToUpdateServerStatus)
             {
-                SetStatus($"Attachment failed to upload for reason {uploadResult.AddAttachmentStatus}.  Retrying...");
-                uploadResult = await _apiClient.RetrySetupAttachment(SelectedAccount.Id, uploadResult);
+                SetStatus($"Attachment failed to upload for reason {uploadResult.Value.AddAttachmentStatus}.  Retrying...");
+                uploadResult = await _apiClient.RetrySetupAttachmentAsync(SelectedAccount.Id, uploadResult.Value);
             }
 
             ClearStatus();
@@ -418,16 +428,16 @@ namespace WpfApiWrapperExample
             }
 
             SetStatus("Getting attached file info");
-            var attachedFileInfos = await _apiClient.GetSetupAttachmentsById(SelectedAccount.Id, SelectedSetup.Id, new[] { SelectedSetupFull.SelectedAttachedFile.Id });
+            var attachedFileInfos = await _apiClient.GetSetupAttachmentsByIdAsync(SelectedAccount.Id, SelectedSetup.Id, new[] { SelectedSetupFull.SelectedAttachedFile.Id });
             ClearStatus();
 
             if (attachedFileInfos.Success == false)
             {
-                MessageBox.Show("There was an error download the attached files");
+                MessageBox.Show($"There was an error download the attached files: {DescribeFailure(attachedFileInfos)}");
                 return;
             }
 
-            var url = attachedFileInfos.ReturnValue[0].SignedURL;
+            var url = attachedFileInfos.Value[0].SignedURL;
 
             var saveFileDialog = new SaveFileDialog();
             saveFileDialog.FileName = SelectedSetupFull.SelectedAttachedFile.Parameters["FileName"].ToString();
@@ -461,12 +471,12 @@ namespace WpfApiWrapperExample
             }
 
             SetStatus("Deleting attached file");
-            var result = await _apiClient.DeleteSetupAttachment(SelectedAccount.Id, SelectedSetup.Id, SelectedSetupFull.SelectedAttachedFile.Id);
+            var result = await _apiClient.DeleteSetupAttachmentAsync(SelectedAccount.Id, SelectedSetup.Id, SelectedSetupFull.SelectedAttachedFile.Id);
             ClearStatus();
 
-            if (result == false)
+            if (result.Success == false)
             {
-                MessageBox.Show("Could not delete attached file");
+                MessageBox.Show($"Could not delete attached file: {DescribeFailure(result)}");
                 return;
             }
 
@@ -499,11 +509,17 @@ namespace WpfApiWrapperExample
             var selectedSetupId = SelectedSetup.Id;
 
             SetStatus("Send updates to API");
-            var result = await _apiClient.UpdateSetup(SelectedAccount.Id, SelectedSetup.Id, new UpdateModel()
+            var result = await _apiClient.UpdateSetupAsync(SelectedAccount.Id, SelectedSetup.Id, new UpdateModel()
             {
                 ParameterUpdates = parameterUpdates,
             });
             ClearStatus();
+
+            if (result.Success == false)
+            {
+                MessageBox.Show($"Could not save changes to setup {SelectedSetup.Name}: {DescribeFailure(result)}");
+                return;
+            }
 
             await GetSetupsForCurrentEventCar(false);
 

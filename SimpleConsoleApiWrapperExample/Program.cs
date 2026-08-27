@@ -4,6 +4,7 @@ using HHDev.DataManagement.Client.Authentication;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using HHDev.Core.Helpers;
 
 namespace SimpleConsoleApiWrapperExample
@@ -12,7 +13,7 @@ namespace SimpleConsoleApiWrapperExample
     {
         private const string API_KEY = "API KEY HERE";
 
-        static async void Main(string[] args)
+        static async Task Main(string[] args)
         {
             var authManager = new AuthenticationManager(eAuthenticationMode.ApiKey, API_KEY);
             var apiClient = new ApiClient(authManager);

@@ -1,8 +1,17 @@
 ## HH Data Management .NET API wrapper examples
 
-This repository contains two different solutions with some examples of how the HH DM .NET API wrapper can be used.
+This repository contains three different solutions with some examples of how the HH DM .NET API wrapper can be used.
 
 In all examples except for the OAuth specific one, an [API key](https://help.hh-dm.com/extensibility/api/#authentication) is needed to authenticate against the API.
+
+### Central configuration
+
+The examples do not set their own target framework or package versions.
+
+- `Directory.Build.props` defines `DotNetTargetFramework`, which sets the target framework for every example. The WPF example appends `-windows` to it.
+- `Directory.Packages.props` uses [central package management](https://learn.microsoft.com/nuget/consume-packages/central-package-management) to define the `HHDev.DataManagement.ApiClientWrapper` version for every example.
+
+Change the version in one of those files to move all examples at once.
 
 ### SimpleConsoleApiWrapperExample
 

@@ -1,0 +1,10 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="HHDev.DataManagement.ApiClientWrapper" Version="26.2.0.4404-preview" />
+    <PackageVersion Include="Fody" Version="6.9.3" />
+    <PackageVersion Include="PropertyChanged.Fody" Version="4.1.0" />
+  </ItemGroup>
+</Project>
