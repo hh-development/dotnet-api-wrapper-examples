@@ -21,8 +21,17 @@
     </Window.Resources>
     <DockPanel IsEnabled="{Binding UIEnabled}">
         <TextBlock DockPanel.Dock="Bottom" Text="{Binding CurrentStatus}"/>
+        <DockPanel DockPanel.Dock="Top">
+            <Label Content="API key: "/>
+            <Button DockPanel.Dock="Right" Content="Connect" MinWidth="80" Command="{Binding ConnectCommand}"/>
+            <CheckBox DockPanel.Dock="Right" Content="Remember key" IsChecked="{Binding RememberApiKey}" VerticalAlignment="Center" Margin="6,0"
+                      ToolTip="Saves the key for your Windows user (encrypted with DPAPI) after a successful connection, and connects with it on start-up"/>
+            <PasswordBox x:Name="ApiKeyBox" Margin="2" VerticalContentAlignment="Center" KeyDown="ApiKeyBox_KeyDown"
+                         ToolTip="Enter your HH DM API key, then press Enter or click Connect"/>
+        </DockPanel>
         <Grid DockPanel.Dock="Left">
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
@@ -58,13 +67,14 @@
 
             <Button Grid.Row="5" Grid.ColumnSpan="2" Content="Add new setup" Command="{Binding AddSetupCommand}"/>
             <Button Grid.Row="6" Grid.ColumnSpan="2" Content="Delete current setup" Command="{Binding DeleteSetupCommand}"/>
-            <Button Grid.Row="7" Grid.ColumnSpan="2" Content="Add attached file to setup" Command="{Binding AddAttachedFileToSetupCommand}"/>
+            <Button Grid.Row="7" Grid.ColumnSpan="2" Content="Show setup history" Command="{Binding ShowSetupHistoryCommand}"/>
+            <Button Grid.Row="8" Grid.ColumnSpan="2" Content="Add attached file to setup" Command="{Binding AddAttachedFileToSetupCommand}"/>
 
-            <Label Grid.Row="8" Grid.Column="0" Content="Attached File: "/>
-            <ComboBox Grid.Row="8" Grid.Column="1" Width="200" ItemsSource="{Binding SelectedSetupFull.AttachedFiles}" SelectedItem="{Binding SelectedSetupFull.SelectedAttachedFile}" DisplayMemberPath="Parameters[FileName]"/>
+            <Label Grid.Row="9" Grid.Column="0" Content="Attached File: "/>
+            <ComboBox Grid.Row="9" Grid.Column="1" Width="200" ItemsSource="{Binding SelectedSetupFull.AttachedFiles}" SelectedItem="{Binding SelectedSetupFull.SelectedAttachedFile}" DisplayMemberPath="Parameters[FileName]"/>
             
-            <Button Grid.Row="9" Grid.ColumnSpan="2" Content="Download selected attached file from setup" Command="{Binding DownloadAttachedFileFromSetupCommand}"/>
-            <Button Grid.Row="10" Grid.ColumnSpan="2" Content="Delete selected attached file from setup" Command="{Binding DeleteAttachedFileFromSetupCommand}"/>
+            <Button Grid.Row="10" Grid.ColumnSpan="2" Content="Download selected attached file from setup" Command="{Binding DownloadAttachedFileFromSetupCommand}"/>
+            <Button Grid.Row="11" Grid.ColumnSpan="2" Content="Delete selected attached file from setup" Command="{Binding DeleteAttachedFileFromSetupCommand}"/>
 
         </Grid>
         <Grid>

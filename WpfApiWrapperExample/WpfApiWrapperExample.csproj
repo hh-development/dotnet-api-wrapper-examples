@@ -2,12 +2,19 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>$(DotNetTargetFramework)-windows</TargetFramework>
+    <!--
+      Pinned to .NET 9 instead of $(DotNetTargetFramework): DevExpress WPF 24.2 does not support .NET 10
+      (GridControl throws a NullReferenceException in BarPopupBase.GetPopupRoot when it is first shown).
+      Move back to $(DotNetTargetFramework)-windows once DevExpress is upgraded to a version that supports .NET 10.
+    -->
+    <TargetFramework>net9.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="HHDev.DataManagement.ApiClientWrapper" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" />
+    <PackageReference Include="DevExpress.Wpf.Grid" />
     <PackageReference Include="PropertyChanged.Fody">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>

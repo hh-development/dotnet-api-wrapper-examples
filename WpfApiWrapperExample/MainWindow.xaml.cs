@@ -22,14 +22,13 @@ namespace WpfApiWrapperExample
     /// </summary>
     public partial class MainWindow : Window, INotifyPropertyChanged
     {
-        private const string API_KEY = "API KEY HERE";
-
-        private IApiClientV2 _apiClient;
+        private HistoryApiClient _apiClient;
         private ApiSetupModel _selectedSetup;
         private ApiCustomPropertyDefinitionModel _currentSetupDefinition;
 
         public string CurrentStatus { get; set; } = "";
         public bool UIEnabled { get; set; } = true;
+        public bool RememberApiKey { get; set; } = true;
 
         public ICommand AddSetupCommand { get; set; }
         public ICommand DeleteSetupCommand { get; set; }
@@ -37,6 +36,8 @@ namespace WpfApiWrapperExample
         public ICommand DownloadAttachedFileFromSetupCommand { get; set; }
         public ICommand DeleteAttachedFileFromSetupCommand { get; set; }
         public ICommand SaveChangesInCurrentSetupCommand { get; set; }
+        public ICommand ShowSetupHistoryCommand { get; set; }
+        public ICommand ConnectCommand { get; set; }
 
 
         public ObservableCollection<ApiAccountInformationModel> Accounts { get; } = new ObservableCollection<ApiAccountInformationModel>();
@@ -58,17 +59,18 @@ namespace WpfApiWrapperExample
             InitializeComponent();
             DataContext = this;
 
-            var authManager = new AuthenticationManager(eAuthenticationMode.ApiKey, API_KEY);
-            _apiClient = new ApiClientV2(authManager);
-
+            // The API client is created when the user enters an API key and clicks "Connect" (see Connect()).
+            // If a key was saved last time, it is filled in and used automatically on start-up.
             Loaded += MainWindow_Loaded;
 
+            ConnectCommand = new DelegateCommand(Connect);
             AddSetupCommand = new DelegateCommand(AddSetup);
             DeleteSetupCommand = new DelegateCommand(DeleteSetup);
             AddAttachedFileToSetupCommand = new DelegateCommand(AddAttachedFileToSetup);
             DownloadAttachedFileFromSetupCommand = new DelegateCommand(DownloadAttachedFileFromSetup);
             DeleteAttachedFileFromSetupCommand = new DelegateCommand(DeleteAttachedFileFromSetup);
             SaveChangesInCurrentSetupCommand = new DelegateCommand(SaveChangesInCurrentSetup);
+            ShowSetupHistoryCommand = new DelegateCommand(ShowSetupHistory);
 
         }
 
@@ -84,7 +86,83 @@ namespace WpfApiWrapperExample
             UIEnabled = true;
         }
 
-        private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            var savedApiKey = ApiKeyStore.Load();
+
+            if (string.IsNullOrEmpty(savedApiKey) == false)
+            {
+                ApiKeyBox.Password = savedApiKey;
+                Connect();
+            }
+        }
+
+        private void ApiKeyBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                Connect();
+            }
+        }
+
+        private async void Connect()
+        {
+            var apiKey = ApiKeyBox.Password?.Trim();
+
+            if (string.IsNullOrEmpty(apiKey))
+            {
+                MessageBox.Show("Please enter an API key.");
+                return;
+            }
+
+            ResetLoadedData();
+
+            var authManager = new AuthenticationManager(eAuthenticationMode.ApiKey, apiKey);
+
+            if (_apiClient == null)
+            {
+                // HistoryApiClient is an ApiClientV2 that also exposes the /{Entity}/History/{id} endpoints
+                _apiClient = new HistoryApiClient(authManager);
+            }
+            else
+            {
+                // Reuse the existing client (and its HttpClient) with the new key
+                _apiClient.UpdateAuthenticationManager(authManager);
+            }
+
+            if (RememberApiKey == false)
+            {
+                ApiKeyStore.Delete();
+            }
+
+            var connected = await LoadAccountsAsync();
+
+            if (connected && RememberApiKey)
+            {
+                ApiKeyStore.Save(apiKey);
+            }
+        }
+
+        private void ResetLoadedData()
+        {
+            SelectedSetupFull = null;
+            SelectedSetup = null;
+            SelectedEventCar = null;
+            SelectedEvent = null;
+            SelectedChampionship = null;
+            SelectedAccount = null;
+
+            Setups.Clear();
+            EventCars.Clear();
+            Events.Clear();
+            Championships.Clear();
+            Accounts.Clear();
+
+            _currentSetupDefinition = null;
+        }
+
+        /// <returns>True when the API accepted the key.</returns>
+        private async Task<bool> LoadAccountsAsync()
         {
             SetStatus("Loading accounts");
             var accounts = await _apiClient.GetAllAccountsAsync();
@@ -92,8 +170,14 @@ namespace WpfApiWrapperExample
 
             if (accounts.Success == false)
             {
-                MessageBox.Show($"Error retrieving accounts: {DescribeFailure(accounts)}");
-                return;
+                MessageBox.Show($"Error retrieving accounts (check the API key): {DescribeFailure(accounts)}");
+                return false;
+            }
+
+            if (accounts.Value.Count == 0)
+            {
+                MessageBox.Show("Connected, but no accounts are available for this API key.");
+                return true;
             }
 
             foreach (var account in accounts.Value)
@@ -102,6 +186,7 @@ namespace WpfApiWrapperExample
             }
 
             SelectedAccount = Accounts.FirstOrDefault();
+            return true;
         }
 
         private async void OnSelectedAccountChanged()
@@ -374,6 +459,38 @@ namespace WpfApiWrapperExample
             }
 
             await GetSetupsForCurrentEventCar(true);
+        }
+
+        private async void ShowSetupHistory()
+        {
+            if (SelectedAccount == null || SelectedSetup == null)
+            {
+                return;
+            }
+
+            var setupName = SelectedSetup.Name;
+
+            SetStatus("Loading setup history");
+            var history = await _apiClient.GetSetupHistoryAsync(SelectedAccount.Id, SelectedSetup.Id);
+            ClearStatus();
+
+            if (history.Success == false)
+            {
+                MessageBox.Show($"Error retrieving history for setup {setupName}: {DescribeFailure(history)}");
+                return;
+            }
+
+            if (history.Value == null || history.Value.Count == 0)
+            {
+                MessageBox.Show($"No history found for setup {setupName}");
+                return;
+            }
+
+            var historyWindow = new SetupHistoryWindow(setupName, history.Value)
+            {
+                Owner = this,
+            };
+            historyWindow.Show();
         }
 
         private async void AddAttachedFileToSetup()
